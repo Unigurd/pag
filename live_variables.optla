@@ -1,0 +1,165 @@
+SET
+
+DOMAIN
+  LabelSet
+      = set(snum)
+  LabelLattice
+      = lift(LabelSet)
+ENDDOMAIN
+
+
+
+PROBLEM Dominator_Analysis
+  direction:  forward
+  carrier:    LabelLattice
+  init_start: lift({})
+  init:       top
+
+
+  equal:      labellattice_equal
+  combine:    labellattice_combine
+  retfunc:    labellattice_combine
+  widening:   labellattice_combine
+
+
+TRANSFER
+
+
+
+ExprStatement(expr), _:
+  let live_vars <= @;
+  in  lift(union(live_vars, {label}));
+
+ScopeStatement(WhileStmt(ExprStatement(expr))), _:
+  let live_vars <= @;
+  in  lift(union(live_vars, {label}));
+
+ScopeStatement(IfStmt(ExprStatement(expr))), _:
+  let live_vars <= @;
+  in  lift(union(live_vars, {label}));
+
+
+
+WhileJoin(), _: @;
+IfJoin(), _: @;
+
+
+DeclareStmt(var_symbol, type), _:
+  let live_vars <= @;
+  in  lift(union(live_vars, {label}));
+
+
+//UndeclareStmt(variables), _: @;
+
+
+FunctionEntry(name), _: @;
+FunctionExit(name, local_vars), _: @;
+
+
+// //expLabels :: Expression -> VariableSet;
+// //expLabels(expr) =
+// //  case expr of
+// IntVal(_)            : {};
+// VarRefExp(_)         : {};
+// 
+// PlusPlusOp(VarRefExp(_))
+//                      : {label};
+// MinusMinusOp(VarRefExp(_))
+//                      : {label};
+// 
+// AddOp(lhs, rhs)      : union(expLabels(lhs),
+//                               expLabels(rhs));
+// SubtractOp(lhs, rhs) : union(expLabels(lhs),
+//                               expLabels(rhs));
+// MultiplyOp(lhs, rhs) : union(expLabels(lhs),
+//                               expLabels(rhs));
+// DivideOp(lhs, rhs)   : union(expLabels(lhs),
+//                               expLabels(rhs));
+// LessThanOp(lhs, rhs)     
+//                      : union(expLabels(lhs), 
+//                               expLabels(rhs));
+// GreaterThanOp(lhs, rhs)  
+//                      : union(expLabels(lhs), 
+//                               expLabels(rhs));
+// AssignOp(VarRefExp(_), rhs) 
+//                      : expLabels(rhs));
+// //    _   : println("warning: unsupported expression in expLabels: ", expr_asttext(expr))
+// //           {};
+// //  endcase;
+// 
+statement, _:
+  println("warning: cannot handle ",
+          "statement of the form: ",
+          stmt_asttext(statement))
+  @;
+
+SUPPORT
+
+
+transfer :: LabelSet, LabelSet -> LabelSet;
+//Expression, VariableSet -> VariableSet;
+transfer(label, live_vars) = union(label, live_vars);
+//  let gen_set  = var_uses(expression);
+
+
+// var_defs :: Expression -> VariableSet;
+// var_defs(expr) =
+//   case  expr  of
+//     IntVal(_)            => {};
+//     VarRefExp(_)         => {};
+// 
+//     PlusPlusOp(VarRefExp(_) as varref)
+//                          => {varref_varid(varref)};
+//     MinusMinusOp(VarRefExp(_) as varref)
+//                          => {varref_varid(varref)};
+// 
+//     AddOp(lhs, rhs)      => union(var_defs(lhs),
+//                                   var_defs(rhs));
+//     SubtractOp(lhs, rhs) => union(var_defs(lhs),
+//                                   var_defs(rhs));
+//     MultiplyOp(lhs, rhs) => union(var_defs(lhs),
+//                                   var_defs(rhs));
+//     DivideOp(lhs, rhs)   => union(var_defs(lhs),
+//                                   var_defs(rhs));
+// 
+// 
+//     LessThanOp(lhs, rhs)                  => union(var_defs(lhs), var_defs(rhs));
+//     GreaterThanOp(lhs, rhs)               => union(var_defs(lhs), var_defs(rhs));
+// 
+//     AssignOp(VarRefExp(_) as varref, rhs) => union({varref_varid(varref)}, var_defs(rhs));
+// 
+//     _   => println("warning: unsupported expression in var_defs: ", expr_asttext(expr))
+//            {};
+//   endcase;
+// 
+// var_uses :: Expression -> VariableSet;
+// var_uses(expr) =
+//   case  expr  of
+//     IntVal(_)           => {};
+//     VarRefExp(_)        => {varref_varid(expr)};
+// 
+//     AssignOp(_, rhs)    => var_uses(rhs);
+// 
+//     _   => if  is_unary(expr)  then
+//              var_uses(unary_get_child(expr))
+//            else if  is_binary(expr)  then
+//              union(var_uses(binary_get_left_child(expr)),
+//                    var_uses(binary_get_right_child(expr)))
+//            else
+//              println("warning: unsupported expression ",
+//                      "in var_uses: ", expr_asttext(expr))
+//              {};
+//   endcase;
+// 
+// 
+// subtract :: VariableSet, VariableSet -> VariableSet;
+// subtract(a, b) = { v  !!  v <-- a,  if !(v ? b) };
+
+
+labellattice_equal :: LabelLattice, LabelLattice
+                      -> bool;  
+labellattice_equal(a, b) = (a = b);
+
+labellattice_combine :: LabelLattice, LabelLattice
+                      -> LabelLattice;
+labellattice_combine(a, b) = (a glb b);
