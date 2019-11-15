@@ -1,0 +1,91 @@
+SET
+
+DOMAIN
+
+  // Set of all possible labels
+  LabelSet
+      = set(snum)
+
+  // Adds top and bootom to the set of labels, turning it into a lattice
+  // the set should be a lattice already, but I don't know how to access the 
+  // "full" set to give as initial information at each node.
+  LabelLattice
+      = lift(LabelSet)
+
+ENDDOMAIN
+
+// Problem specification
+PROBLEM Dominator_Analysis
+  direction:  forward
+  carrier:    LabelLattice
+  init_start: lift({})      // The initial info at the start node
+  init:       top           // The initial info at all other nodes
+  
+  equal:      labellattice_equal
+  combine:    labellattice_combine
+  retfunc:    labellattice_combine  // Not sure what retfunc and widening is, but
+  widening:   labellattice_combine  // it works when they're the same as combine
+
+
+
+TRANSFER
+
+// Valid nodes are assignment, if, while, simple expressions, declarations, the main function and its return statements.
+// Nodes that aren't mentioned in the assignment aren't added to the list of dominating labels, but adding them is 
+// just copying the two lines from the valid nodes to them.
+
+// Add the label of an expression to the set of currently dominating labels.
+// All expressions are assumed to be simple, and we therefore do not recurse through them.
+ExprStatement(_), _:
+  let dom_labels <= @;
+  in  lift(union(dom_labels, {label}));
+
+// Add the label of a while-loop to the set of currently dominating labels.
+ScopeStatement(WhileStmt(ExprStatement(_))), _:
+  let dom_labels <= @;
+  in  lift(union(dom_labels, {label}));
+
+// Add the label of an if-statement to the set of currently dominating labels.
+ScopeStatement(IfStmt(ExprStatement(_))), _:
+  let dom_labels <= @;
+  in  lift(union(dom_labels, {label}));
+
+// Joins are not mentioned in the assignment, and we therefore 
+// do not add their labels to the dominating labels
+WhileJoin(), _: @;
+IfJoin(), _: @;
+
+// Add the label of a declaration to the set of currently dominating labels.
+DeclareStmt(var_symbol, type), _:
+  let dom_labels <= @;
+  in  lift(union(dom_labels, {label}));
+
+// Undeclare statements are not mentioned in the assignment, and
+// we therefore do not add their labels to the dominating labels
+UndeclareStmt(variables), _: @;
+
+// The only valid function is "main", but we do not check the name of the function
+// since we are allowed to do what we want in unspecified cases.
+FunctionEntry(_), _:
+  let dom_labels <= @;
+  in  lift(union(dom_labels, {label}));
+
+// Exiting functions are not mentioned in the assignment (aside from the return statement), and
+// we therefore do not add their labels to the dominating labels
+FunctionExit(name, local_vars), _: @;
+
+statement, _:
+  println("warning: cannot handle ",
+          "statement of the form: ",
+          stmt_asttext(statement))
+  @;
+
+SUPPORT
+
+labellattice_equal :: LabelLattice, LabelLattice
+                      -> bool;  
+labellattice_equal(a, b) = (a = b);
+
+labellattice_combine :: LabelLattice, LabelLattice
+                      -> LabelLattice;
+labellattice_combine(a, b) = (a glb b);
